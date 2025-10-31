@@ -1,6 +1,8 @@
 import { Button } from "@workspace/ui/components/button"
+import { env } from "@workspace/env"
 
 export default function Page() {
+  console.log(env)
   return (
     <div className="flex items-center justify-center min-h-svh">
       <div className="flex flex-col items-center justify-center gap-4">
