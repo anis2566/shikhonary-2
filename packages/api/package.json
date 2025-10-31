@@ -1,0 +1,36 @@
+{
+    "name": "@workspace/api",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        }
+    },
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "clean": "git clean -xdf .cache .turbo dist node_modules",
+        "dev": "tsc",
+        "format": "prettier --check . --ignore-path ../../.gitignore",
+        "lint": "eslint",
+        "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+    },
+    "dependencies": {
+        "@trpc/server": "^11.7.1",
+        "@workspace/auth": "workspace:*",
+        "@workspace/db": "workspace:*",
+        "@workspace/env": "workspace:*",
+        "@workspace/schema": "workspace:*",
+        "date-fns": "^4.1.0",
+        "superjson": "^2.2.5",
+        "zod": "3.24.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.19.9",
+        "@workspace/eslint-config": "workspace:*",
+        "@workspace/typescript-config": "workspace:*",
+        "eslint": "^9.32.0",
+        "typescript": "^5.9.3"
+    }
+}

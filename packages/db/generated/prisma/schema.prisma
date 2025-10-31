@@ -1,0 +1,468 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String?
+  emailVerified Boolean @default(false)
+  image         String?
+  role          String  @default("User")
+  status        String  @default("Pending")
+  phone         String?
+
+  referredToMe Refer? @relation("UserIsReferee")
+
+  accounts     Account[]
+  sessions     Session[]
+  exams        Exam[]
+  attempts     McqAttempt[]
+  feedbacks    ExamFeedback[]
+  transactions Transaction[]
+  purchases    PlanPurchase[]
+
+  referredByMe Refer[] @relation("UserIsReferer")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Account {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  expiresAt    DateTime?
+  password     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique @map("token")
+  userId       String   @db.ObjectId
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+model ClassName {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String @unique
+  level    String
+  position Int    @default(0)
+
+  subjectIds String[]  @db.ObjectId
+  subjects   Subject[] @relation(fields: [subjectIds], references: [id])
+
+  chapterIds String[]  @db.ObjectId
+  chapters   Chapter[] @relation(fields: [chapterIds], references: [id])
+
+  exams Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([level])
+  @@index([name, level])
+}
+
+model Subject {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  name  String
+  group String?
+
+  classNameIds String[]    @db.ObjectId
+  classNames   ClassName[] @relation(fields: [classNameIds], references: [id])
+
+  chapters Chapter[]
+  mcqs     Mcq[]
+  exams    Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([group])
+  @@index([name, group])
+}
+
+model Chapter {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  position Int    @default(0)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  examIds String[] @db.ObjectId
+  exams   Exam[]   @relation(fields: [examIds], references: [id])
+
+  classNameIds String[]    @db.ObjectId
+  classNames   ClassName[] @relation(fields: [classNameIds], references: [id])
+
+  context ChapterContext?
+  mcqs    Mcq[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([name])
+  @@index([subjectId, name])
+}
+
+model ChapterContext {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  author        String?
+  authorSummary String?
+  content       String
+  meaning       String?
+  summary       String?
+
+  chapterId String  @unique @db.ObjectId
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([title])
+  @@index([author])
+}
+
+model Mcq {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  question    String
+  options     String[]
+  statements  String[] @default([])
+  answer      String
+  type        String
+  reference   String?
+  explanation String?
+  isMath      Boolean  @default(false)
+  session     Int
+  source      String?
+  questionUrl String?
+  contextUrl  String?
+
+  context String?
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  chapterId String  @db.ObjectId
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  examIds String[] @db.ObjectId
+  exams   Exam[]   @relation(fields: [examIds], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([chapterId])
+  @@index([type])
+  @@index([session])
+  @@index([isMath])
+  @@index([subjectId, chapterId])
+  @@index([subjectId, type])
+  @@index([chapterId, type])
+  @@index([type, session])
+}
+
+model Exam {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  type          String
+  questionCount Int
+  duration      Int
+  status        String @default("Pending")
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: NoAction)
+
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: NoAction)
+  subjectId String  @db.ObjectId
+
+  chapterIds String[]  @db.ObjectId
+  chapters   Chapter[] @relation(fields: [chapterIds], references: [id])
+
+  questionIds String[] @db.ObjectId
+  questions   Mcq[]    @relation(fields: [questionIds], references: [id])
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  attempts        McqAttempt[]
+  recommendations Recommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([title])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([classNameId])
+  @@index([subjectId])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([userId, type])
+  @@index([classNameId, subjectId])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model McqAttempt {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  answers       String[]  @default([])
+  total         Int
+  score         Int       @default(0)
+  streak        Int       @default(0)
+  longestStreak Int       @default(0)
+  wrongAnswer   Int       @default(0)
+  status        String    @default("Pending")
+  startTime     DateTime?
+  endTime       DateTime?
+
+  examId String @db.ObjectId
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  feedback ExamFeedback?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([examId])
+  @@index([status])
+  @@index([score])
+  @@index([createdAt])
+  @@index([userId, examId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([examId, status])
+  @@index([status, createdAt])
+  @@index([userId, score])
+}
+
+model ExamFeedback {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  mcqAttemptId String     @unique @db.ObjectId
+  mcqAttempt   McqAttempt @relation(fields: [mcqAttemptId], references: [id], onDelete: Cascade)
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  overallSummary  String
+  strengths       String[] @default([])
+  weaknesses      String[] @default([])
+  recommendations String[] @default([])
+
+  detailedAnalysis Json?
+
+  userRating Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userRating])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([userId, userRating])
+}
+
+model CreditPlan {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  credit    Int
+  price     Int
+  discount  Int
+  save      Int
+  bonus     Int
+  status    String  @default("Active")
+  isPopular Boolean @default(false)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([isPopular])
+  @@index([price])
+  @@index([credit])
+  @@index([status, isPopular])
+  @@index([status, price])
+}
+
+model Transaction {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  transactionId String
+  amount        Int
+  type          String
+  method        String
+  status        String @default("Pending")
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  creditPlanId String     @db.ObjectId
+  creditPlan   CreditPlan @relation(fields: [creditPlanId], references: [id], onDelete: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([transactionId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([method])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([userId, type])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([amount])
+}
+
+model ExamPlan {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  title                String
+  description          String
+  credit               Int
+  mcqs                 Int      @default(0)
+  exams                Int      @default(0)
+  attempts             Int      @default(0)
+  features             String[]
+  aiFeedbackFeatures   String[]
+  enableDownloadReport Boolean  @default(false)
+
+  purchases PlanPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([credit])
+  @@index([mcqs])
+  @@index([exams])
+  @@index([attempts])
+  @@index([title])
+}
+
+model PlanPurchase {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  usedMcqs     Int    @default(0)
+  usedExams    Int    @default(0)
+  usedAttempts Int    @default(0)
+  status       String @default("Pending")
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planId String   @db.ObjectId
+  plan   ExamPlan @relation(fields: [planId], references: [id], onDelete: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([userId, planId])
+  @@index([status, createdAt])
+}
+
+model Refer {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  hasPurchased Boolean @default(false)
+
+  refererId String @db.ObjectId
+  referer   User   @relation("UserIsReferer", fields: [refererId], references: [id], onDelete: Cascade)
+
+  refereeId String @unique @db.ObjectId
+  referee   User   @relation("UserIsReferee", fields: [refereeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([refererId])
+  @@index([hasPurchased])
+  @@index([createdAt])
+  @@index([refererId, hasPurchased])
+}
+
+model Announcement {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  content    String
+  isFeatured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@index([isFeatured, createdAt])
+}
+
+model Recommendation {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  title  String
+  reason String
+
+  examId String @db.ObjectId
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([examId])
+  @@index([createdAt])
+  @@index([examId, createdAt])
+}

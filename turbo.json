@@ -3,21 +3,59 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"],
-      "env": ["AUTH_SECRET"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**"
+      ],
+      "env": [
+        "NEXT_PUBLIC_APP_URL",
+        "NODE_ENV",
+        "AUTH_SECRET",
+        "DATABASE_URL"
+      ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["AUTH_SECRET"]
+      "env": [
+        "NEXT_PUBLIC_APP_URL",
+        "NODE_ENV",
+        "AUTH_SECRET",
+        "DATABASE_URL"
+      ]
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:deploy": {
+      "cache": false
     }
-  }
+  },
+  "globalEnv": [
+    "NEXT_PUBLIC_APP_URL",
+    "NODE_ENV",
+    "AUTH_SECRET",
+    "DATABASE_URL"
+  ]
 }
